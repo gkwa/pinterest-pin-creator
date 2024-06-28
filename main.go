@@ -92,7 +92,23 @@ func createPin(scheduledPinData *schedule.NextPinData) {
 
 	boardId, err := boardIdByName(boards, scheduledPinData.BoardName)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Info("Board not found. Creating new board.")
+		err = client.CreateBoard(pinterest.BoardData{
+			Name:        scheduledPinData.BoardName,
+			Description: "Created by pin-creator",
+			Privacy:     "PUBLIC",
+		})
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		boards, err = client.ListBoards()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		boardId, err = boardIdByName(boards, scheduledPinData.BoardName)
+		if err != nil {
+			log.Fatal(err.Error())
+		}
 	}
 
 	pinData := pinterest.PinData{

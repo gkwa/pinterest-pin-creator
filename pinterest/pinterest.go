@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/http/httputil"
 )
 
 const (
@@ -17,6 +19,7 @@ const (
 type ClientInterface interface {
 	CreatePin(pinData PinData) error
 	ListBoards() ([]BoardInfo, error)
+	CreateBoard(boardData BoardData) error
 }
 
 type Client struct {
@@ -37,6 +40,12 @@ type PinData struct {
 type BoardInfo struct {
 	Id   string
 	Name string
+}
+
+type BoardData struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Privacy     string `json:"privacy"`
 }
 
 type createPinRequestBody struct {
@@ -120,10 +129,25 @@ func (c *Client) ListBoards() ([]BoardInfo, error) {
 			Id:   item.Id,
 			Name: item.Name,
 		})
-		fmt.Printf("board name: %s", item.Name)
+		log.Printf("Board found: %s", item.Name)
 	}
 
 	return boardInfos, nil
+}
+
+func (c *Client) CreateBoard(boardData BoardData) error {
+	createBoardRequestBody := BoardData{
+		Name:        boardData.Name,
+		Description: boardData.Description,
+		Privacy:     boardData.Privacy,
+	}
+
+	err := c.doCreateBoard(createBoardRequestBody)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func toBase64(imgPath string) string {
@@ -209,8 +233,47 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 	return listBoardResponseBody, nil
 }
 
-func handleWrongStatuscode(res *http.Response) (errorResponse, error) {
+func (c *Client) doCreateBoard(body BoardData) error {
+	url := fmt.Sprintf("%s%s", c.baseUrl, "boards")
 
+	bodyBytes, err := json.MarshalIndent(body, "", "  ")
+	if err != nil {
+		return errors.New("unable to marshal body while doCreateBoard")
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return errors.New("unable to create new http request while doCreateBoard")
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
+	req.Header.Add("Content-Type", "application/json")
+
+	// Print the entire HTTP request
+	requestDump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		return errors.New("unable to dump request while doCreateBoard")
+	}
+	fmt.Println("Request:")
+	fmt.Println(string(requestDump))
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return errors.New("unable to send request while doCreateBoard")
+	}
+
+	if res.StatusCode != 201 {
+		errorResponse, err := handleWrongStatuscode(res)
+		if err != nil {
+			return err
+		}
+		return errors.New(fmt.Sprintf("statuscode not 201 while doCreateBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+	}
+
+	return nil
+}
+
+func handleWrongStatuscode(res *http.Response) (errorResponse, error) {
 	errorResponse := errorResponse{}
 
 	bytes, err := ioutil.ReadAll(res.Body)
