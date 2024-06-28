@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	baseUrl = "https://api.pinterest.com/v5/"
+	baseUrl = "https://api-sandbox.pinterest.com/v5/"
 )
 
 type ClientInterface interface {
@@ -120,6 +120,7 @@ func (c *Client) ListBoards() ([]BoardInfo, error) {
 			Id:   item.Id,
 			Name: item.Name,
 		})
+		fmt.Printf("board name: %s", item.Name)
 	}
 
 	return boardInfos, nil

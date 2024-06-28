@@ -19,7 +19,7 @@ const (
 	redirectBaseUri        = "http://localhost"
 	redirectLandingBaseUri = "https://developers.pinterest.com/apps/"
 	oAuthUri               = "https://www.pinterest.com"
-	apiUri                 = "https://api.pinterest.com"
+	apiUri                 = "https://api-sandbox.pinterest.com"
 )
 
 type OAuth struct {
