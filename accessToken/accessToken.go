@@ -2,7 +2,6 @@ package accessToken
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"pin-creator/accessToken/oauth"
 )
@@ -43,18 +42,11 @@ func NewAccessTokenFileHandler(filePath string) *AccessTokenFileHandler {
 }
 
 func (h *AccessTokenFileHandler) Read() (string, error) {
-	f, err := os.Open(h.filePath)
-	defer f.Close()
-
+	bytes, err := os.ReadFile(h.filePath)
 	if err != nil {
 		return "", err
-	} else {
-		bytes, err := ioutil.ReadAll(f)
-		if err != nil {
-			return "", err
-		}
-		return string(bytes), nil
 	}
+	return string(bytes), nil
 }
 
 func (h *AccessTokenFileHandler) Write(accessToken string) error {

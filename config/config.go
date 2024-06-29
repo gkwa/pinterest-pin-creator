@@ -1,7 +1,7 @@
 package config
 
 import (
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,7 +29,7 @@ func NewReader(configFilePath string) *ConfigReader {
 
 func (r *ConfigReader) Read() (*Config, error) {
 
-	yamlFile, err := ioutil.ReadFile(r.configFilePath)
+	yamlFile, err := os.ReadFile(r.configFilePath)
 	if err != nil {
 		return nil, err
 	}
