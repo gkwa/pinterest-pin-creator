@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 )
 
@@ -51,7 +50,7 @@ func (c *Client) ListBoards() ([]BoardInfo, error) {
 			Id:   item.Id,
 			Name: item.Name,
 		})
-		log.Printf("Board found: %s", item.Name)
+		// log.Printf("Board found: %s", item.Name)
 	}
 
 	return boardInfos, nil
@@ -88,7 +87,7 @@ func (c *Client) deleteBoard(boardId string) error {
 		if err != nil {
 			return err
 		}
-		return errors.New(fmt.Sprintf("statuscode not 204 while deleteBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+		return fmt.Errorf("statuscode not 204 while deleteBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
 	return nil
@@ -117,7 +116,7 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 		if err != nil {
 			return listBoardResponseBody, err
 		}
-		return listBoardResponseBody, errors.New(fmt.Sprintf("statuscode not 200 while doListBoards. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+		return listBoardResponseBody, fmt.Errorf("statuscode not 200 while doListBoards. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
 	defer res.Body.Close()
@@ -161,7 +160,7 @@ func (c *Client) doCreateBoard(body BoardData) error {
 		if err != nil {
 			return err
 		}
-		return errors.New(fmt.Sprintf("statuscode not 201 while doCreateBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+		return fmt.Errorf("statuscode not 201 while doCreateBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
 	return nil

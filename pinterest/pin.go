@@ -78,7 +78,7 @@ func (c *Client) doCreatePin(body createPinRequestBody) error {
 		if err != nil {
 			return err
 		}
-		return errors.New(fmt.Sprintf("statuscode not 201 while doCreatePin. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+		return fmt.Errorf("statuscode not 201 while doCreatePin. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
 	return nil

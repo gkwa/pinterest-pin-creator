@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -36,7 +37,21 @@ func main() {
 		log.Fatalf("Error deleting boards: %v", err)
 	}
 
-	createPin(nextPinData)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	err = createPin(ctx, nextPinData)
+	duration := time.Since(start)
+
+	if err != nil {
+		log.Fatalf("Error creating pin: %v", err)
+	}
+
+
+
+
+	log.Infof("Pin creation took %s", duration.Truncate(time.Second))
 
 	err = scheduleReader.SetCreated(nextPinData.Index)
 	if err != nil {
@@ -92,16 +107,23 @@ func getClient() pinterest.ClientInterface {
 	return pinterest.NewClient(token)
 }
 
-func createPin(scheduledPinData *schedule.NextPinData) {
+func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) error {
 	client := getClient()
 
-	boards, err := client.ListBoards()
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	var boardId string
+	var err error
 
-	boardId, err := boardIdByName(boards, scheduledPinData.BoardName)
-	if err != nil {
+	err = retry(ctx, func() error {
+		boards, err := client.ListBoards()
+		if err != nil {
+			return err
+		}
+
+		boardId, err = boardIdByName(boards, scheduledPinData.BoardName)
+		if err == nil {
+			return nil
+		}
+
 		log.Info("Board not found. Creating new board.")
 		err = client.CreateBoard(pinterest.BoardData{
 			Name:        scheduledPinData.BoardName,
@@ -109,19 +131,14 @@ func createPin(scheduledPinData *schedule.NextPinData) {
 			Privacy:     "PUBLIC",
 		})
 		if err != nil {
-			log.Fatal(err.Error())
+			return err
 		}
 
-		time.Sleep(5 * time.Second)
+		return errors.New("board not found after creation, retrying")
+	})
 
-		boards, err = client.ListBoards()
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		boardId, err = boardIdByName(boards, scheduledPinData.BoardName)
-		if err != nil {
-			log.Fatal(err.Error())
-		}
+	if err != nil {
+		return fmt.Errorf("failed to create or find board: %w", err)
 	}
 
 	pinData := pinterest.PinData{
@@ -135,10 +152,11 @@ func createPin(scheduledPinData *schedule.NextPinData) {
 
 	err = client.CreatePin(pinData)
 	if err != nil {
-		log.Fatal(err.Error())
+		return fmt.Errorf("failed to create pin: %w", err)
 	}
 
 	log.Infof("Created Pin '%s' in board '%s'\n", pinData.Title, scheduledPinData.BoardName)
+	return nil
 }
 
 func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, error) {
@@ -151,3 +169,22 @@ func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, erro
 	return "", errors.New(fmt.Sprintf("board %s not found\n", boardName))
 }
 
+func retry(ctx context.Context, f func() error) error {
+	backoff := time.Second
+	for {
+		err := f()
+		if err == nil {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("operation failed after retries: %w", err)
+		case <-time.After(backoff):
+			backoff *= 2
+			if backoff > 10*time.Second {
+				backoff = 10 * time.Second
+			}
+		}
+	}
+}
