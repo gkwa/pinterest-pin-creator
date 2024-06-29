@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"net/http/httputil"
 )
 
 const (
@@ -20,6 +20,7 @@ type ClientInterface interface {
 	CreatePin(pinData PinData) error
 	ListBoards() ([]BoardInfo, error)
 	CreateBoard(boardData BoardData) error
+	DeleteBoards(boardId string) error
 }
 
 type Client struct {
@@ -150,6 +151,33 @@ func (c *Client) CreateBoard(boardData BoardData) error {
 	return nil
 }
 
+func (c *Client) DeleteBoards(boardId string) error {
+	url := fmt.Sprintf("%s%s/%s", c.baseUrl, "boards", boardId)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return errors.New("unable to create new http request while DeleteBoards")
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
+	req.Header.Add("Content-Type", "application/json")
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return errors.New("unable to send request while DeleteBoards")
+	}
+
+	if res.StatusCode != 204 {
+		errorResponse, err := handleWrongStatuscode(res)
+		if err != nil {
+			return err
+		}
+		return errors.New(fmt.Sprintf("statuscode not 204 while DeleteBoards. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message))
+	}
+
+	return nil
+}
+
 func toBase64(imgPath string) string {
 	bytes, err := ioutil.ReadFile(imgPath)
 	if err != nil {
@@ -160,7 +188,6 @@ func toBase64(imgPath string) string {
 }
 
 func (c *Client) doCreatePin(body createPinRequestBody) error {
-
 	url := fmt.Sprintf("%s%s", c.baseUrl, "pins")
 
 	bodyBytes, err := json.Marshal(body)
@@ -220,7 +247,7 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 
 	defer res.Body.Close()
 
-	bytes, err := ioutil.ReadAll(res.Body)
+	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
 		return listBoardResponseBody, errors.New("unable to read response body while doListBoards")
 	}
@@ -248,14 +275,6 @@ func (c *Client) doCreateBoard(body BoardData) error {
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
 	req.Header.Add("Content-Type", "application/json")
-
-	// Print the entire HTTP request
-	requestDump, err := httputil.DumpRequest(req, true)
-	if err != nil {
-		return errors.New("unable to dump request while doCreateBoard")
-	}
-	fmt.Println("Request:")
-	fmt.Println(string(requestDump))
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {

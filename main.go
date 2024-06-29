@@ -8,6 +8,8 @@ import (
 	"pin-creator/config"
 	"pin-creator/pinterest"
 	"pin-creator/schedule"
+	"regexp"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -15,7 +17,6 @@ import (
 var cfg *config.Config
 
 func main() {
-
 	readConfig()
 
 	log.Infof("Checking for pins to create in '%s'", cfg.ScheduleFilePath)
@@ -30,12 +31,16 @@ func main() {
 		return
 	}
 
+	DeleteBoards("testboard\\d+")
+
 	createPin(nextPinData)
 
 	err = scheduleReader.SetCreated(nextPinData.Index)
 	if err != nil {
 		log.Fatalf("Error setting pin created to true. Error: %s", err.Error())
 	}
+
+	
 }
 
 func readConfig() {
@@ -101,6 +106,9 @@ func createPin(scheduledPinData *schedule.NextPinData) {
 		if err != nil {
 			log.Fatal(err.Error())
 		}
+
+		time.Sleep(5 * time.Second)
+
 		boards, err = client.ListBoards()
 		if err != nil {
 			log.Fatal(err.Error())
@@ -129,7 +137,6 @@ func createPin(scheduledPinData *schedule.NextPinData) {
 }
 
 func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, error) {
-
 	for _, board := range boards {
 		if board.Name == boardName {
 			return board.Id, nil
@@ -138,3 +145,27 @@ func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, erro
 
 	return "", errors.New(fmt.Sprintf("board %s not found\n", boardName))
 }
+
+func DeleteBoards(regex string) {
+	token := getToken()
+	client := pinterest.NewClient(token)
+
+	boards, err := client.ListBoards()
+	if err != nil {
+		log.Errorf("Error listing boards: %v", err)
+		return
+	}
+
+	r := regexp.MustCompile(regex)
+	for _, board := range boards {
+		if r.MatchString(board.Name) {
+			err := client.DeleteBoards(board.Id)
+			if err != nil {
+				log.Errorf("Error deleting board %s: %v", board.Name, err)
+			} else {
+				log.Infof("Deleted board: %s", board.Name)
+			}
+		}
+	}
+}
+
