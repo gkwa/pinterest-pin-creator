@@ -31,13 +31,13 @@ func main() {
 		return
 	}
 
-	client := getClient()
-	err = client.DeleteBoards("testboard\\d+")
-	if err != nil {
-		log.Fatalf("Error deleting boards: %v", err)
-	}
+	// client := getClient()
+	// err = client.DeleteBoards("testboard\\d+")
+	// if err != nil {
+	// 	log.Fatalf("Error deleting boards: %v", err)
+	// }
 
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	start := time.Now()
@@ -47,9 +47,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating pin: %v", err)
 	}
-
-
-
 
 	log.Infof("Pin creation took %s", duration.Truncate(time.Second))
 
@@ -166,7 +163,7 @@ func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, erro
 		}
 	}
 
-	return "", errors.New(fmt.Sprintf("board %s not found\n", boardName))
+	return "", fmt.Errorf("board %s not found", boardName)
 }
 
 func retry(ctx context.Context, f func() error) error {
@@ -182,8 +179,8 @@ func retry(ctx context.Context, f func() error) error {
 			return fmt.Errorf("operation failed after retries: %w", err)
 		case <-time.After(backoff):
 			backoff *= 2
-			if backoff > 10*time.Second {
-				backoff = 10 * time.Second
+			if backoff > 60*time.Second {
+				backoff = 60 * time.Second
 			}
 		}
 	}

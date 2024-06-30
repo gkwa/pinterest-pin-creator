@@ -13,10 +13,6 @@ type Config struct {
 	RedirectPort     int    `yaml:"redirect_port"`
 }
 
-type ConfigReaderInterface interface {
-	Read() (*Config, error)
-}
-
 type ConfigReader struct {
 	configFilePath string
 }

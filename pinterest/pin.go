@@ -1,95 +1,78 @@
 package pinterest
 
 import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io/ioutil"
-	"net/http"
+   "time"
 )
 
-type PinData struct {
-	BoardId     string
-	ImgPath     string
-	Link        string
-	Title       string
-	Description string
-	AltText     string
+type Pin struct {
+   ID              string      `json:"id"`
+   CreatedAt       CustomTime  `json:"created_at"`
+   Link            string      `json:"link"`
+   Title           string      `json:"title"`
+   Description     string      `json:"description"`
+   DominantColor   string      `json:"dominant_color"`
+   AltText         string      `json:"alt_text"`
+   CreativeType    string      `json:"creative_type"`
+   BoardID         string      `json:"board_id"`
+   BoardSectionID  *string     `json:"board_section_id"`
+   BoardOwner      BoardOwner  `json:"board_owner"`
+   IsOwner         bool        `json:"is_owner"`
+   Media           Media       `json:"media"`
+   ParentPinID     *string     `json:"parent_pin_id"`
+   IsStandard      bool        `json:"is_standard"`
+   HasBeenPromoted bool        `json:"has_been_promoted"`
+   Note            string      `json:"note"`
+   PinMetrics      *PinMetrics `json:"pin_metrics"`
+   ProductTags     []string    `json:"product_tags"`
 }
 
-type createPinRequestBody struct {
-	Link           string                 `json:"link"`
-	Title          string                 `json:"title"`
-	Description    string                 `json:"description"`
-	AltText        string                 `json:"alt_text"`
-	BoardId        string                 `json:"board_id"`
-	BoardSectionId string                 `json:"board_section_id,omitempty"`
-	MediaSource    mediaSourceRequestBody `json:"media_source"`
+type CustomTime struct {
+   time.Time
 }
 
-type mediaSourceRequestBody struct {
-	SourceType  string `json:"source_type"`
-	ContentType string `json:"content_type"`
-	Data        string `json:"data"`
+func (ct *CustomTime) UnmarshalJSON(b []byte) error {
+   s := string(b)
+   t, err := time.Parse(`"2006-01-02T15:04:05"`, s)
+   if err != nil {
+   	return err
+   }
+   *ct = CustomTime{t}
+   return nil
 }
 
-func (c *Client) CreatePin(pinData PinData) error {
-	createPinRequestBody := createPinRequestBody{
-		Link:        pinData.Link,
-		Title:       pinData.Title,
-		Description: pinData.Description,
-		AltText:     pinData.AltText,
-		BoardId:     pinData.BoardId,
-		MediaSource: mediaSourceRequestBody{
-			SourceType:  "image_base64",
-			ContentType: "image/png",
-			Data:        toBase64(pinData.ImgPath),
-		},
-	}
-
-	return c.doCreatePin(createPinRequestBody)
+func (ct CustomTime) MarshalJSON() ([]byte, error) {
+   return []byte(ct.Time.Format(`"2006-01-02T15:04:05"`)), nil
 }
 
-func (c *Client) doCreatePin(body createPinRequestBody) error {
-	url := fmt.Sprintf("%s%s", c.baseUrl, "pins")
-
-	bodyBytes, err := json.Marshal(body)
-	if err != nil {
-		return errors.New("unable to marshal body while doCreatePin")
-	}
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
-	if err != nil {
-		return errors.New("unable to create new http request while doCreatePin")
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return errors.New("unable to send request while doCreatePin")
-	}
-
-	if res.StatusCode != 201 {
-		errorResponse, err := handleWrongStatuscode(res)
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("statuscode not 201 while doCreatePin. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
-	}
-
-	return nil
+type BoardOwner struct {
+   Username string `json:"username"`
 }
 
-func toBase64(imgPath string) string {
-	bytes, err := ioutil.ReadFile(imgPath)
-	if err != nil {
-		panic(err)
-	}
+type Media struct {
+   MediaType string           `json:"media_type"`
+   Images    map[string]Image `json:"images"`
+}
 
-	return base64.StdEncoding.EncodeToString(bytes)
+type Image struct {
+   Width  int    `json:"width"`
+   Height int    `json:"height"`
+   URL    string `json:"url"`
+}
+
+type PinMetrics struct {
+   PinMetrics []PinMetricsData `json:"pin_metrics"`
+}
+
+type PinMetricsData struct {
+   NinetyD MetricsData `json:"90d"`
+   AllTime MetricsData `json:"all_time"`
+}
+
+type MetricsData struct {
+   PinClick     int `json:"pin_click"`
+   Impression   int `json:"impression"`
+   Clickthrough int `json:"clickthrough"`
+   Reaction     int `json:"reaction,omitempty"`
+   Comment      int `json:"comment,omitempty"`
 }
 
