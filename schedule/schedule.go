@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	timestampLayout = time.RFC1123 //Mon, 02 Jan 2006 15:04:05 MST
+	timestampLayout = time.RFC1123 // Mon, 02 Jan 2006 15:04:05 MST
 )
 
 type NextPinData struct {
@@ -40,7 +40,6 @@ func NewScheduleReader(filePath string) *ScheduleReader {
 }
 
 func (r *ScheduleReader) Next() (*NextPinData, error) {
-
 	now := time.Now()
 
 	allLines, err := readFile(r.filePath)
@@ -108,7 +107,6 @@ func (r *ScheduleReader) SetCreated(index int) error {
 }
 
 func readFile(csvFile string) ([][]string, error) {
-
 	csvfile, err := os.Open(csvFile)
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("unable to read csv file. Error: %s", err.Error()))
@@ -125,11 +123,10 @@ func readFile(csvFile string) ([][]string, error) {
 	}
 
 	return allLines, nil
-
 }
 
 func writeFile(csvFile string, allLines [][]string) error {
-	csvfile, err := os.OpenFile(csvFile, os.O_WRONLY, 0644)
+	csvfile, err := os.OpenFile(csvFile, os.O_WRONLY, 0o644)
 	if err != nil {
 		return errors.New(fmt.Sprintf("unable to write csv file. Error: %s", err.Error()))
 	}
@@ -142,7 +139,6 @@ func writeFile(csvFile string, allLines [][]string) error {
 	defer w.Flush()
 
 	err = w.WriteAll(allLines)
-
 	if err != nil {
 		return errors.New(fmt.Sprintf("unable to write csv file. Error: %s", err.Error()))
 	}

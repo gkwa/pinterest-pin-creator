@@ -52,4 +52,3 @@ func (c *Client) DeleteBoards(regex string) error {
 
 	return nil
 }
-

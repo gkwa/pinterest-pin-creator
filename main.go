@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
+
 	"pin-creator/accessToken"
 	"pin-creator/config"
 	"pin-creator/pinterest"
 	"pin-creator/schedule"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -133,7 +134,6 @@ func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) erro
 
 		return errors.New("board not found after creation, retrying")
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to create or find board: %w", err)
 	}
