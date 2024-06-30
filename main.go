@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -135,10 +134,10 @@ func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) erro
 			return err
 		}
 
-		return errors.New("board not found after creation, retrying")
+		return fmt.Errorf("board not found after creation, retrying: %v", err)
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create or find board: %w", err)
+		return fmt.Errorf("failed to create or find board: %v", err)
 	}
 
 	pinData := pinterest.PinData{

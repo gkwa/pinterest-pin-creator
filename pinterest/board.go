@@ -140,7 +140,17 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 
 	var response interface{}
 
-	err = json.NewDecoder(res.Body).Decode(&response)
+	// Read the entire body
+	bodyBytes, err := io.ReadAll(res.Body)
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("unable to read response body: %v", err)
+	}
+
+	// Always close the original body when you're done with it
+	defer res.Body.Close()
+
+	// First unmarshaling
+	err = json.Unmarshal(bodyBytes, &response)
 	if err != nil {
 		return listBoardResponseBody, fmt.Errorf("unable to decode response body: %v", err)
 	}
@@ -153,14 +163,30 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 	fmt.Println(string(prettyJSON))
 	fmt.Printf("status: %d\n", res.StatusCode)
 
-	bytes, err := io.ReadAll(res.Body)
-	if err != nil {
-		return listBoardResponseBody, errors.New("unable to read response body while doListBoards")
+	// Check if the JSON is empty
+	if len(bodyBytes) == 0 {
+		return listBoardResponseBody, fmt.Errorf("empty JSON input")
 	}
 
-	err = json.Unmarshal(bytes, &listBoardResponseBody)
+	// Unmarshal the JSON data into a map
+	var data map[string]interface{}
+	err = json.Unmarshal(bodyBytes, &data)
 	if err != nil {
-		return listBoardResponseBody, errors.New("unable to unmarshal response body while doListBoards")
+		return listBoardResponseBody, fmt.Errorf("error unmarshaling JSON: %v", err)
+	}
+
+	// Marshal the data with indentation
+	prettyJSON, err = json.MarshalIndent(data, "", "    ")
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("error marshaling JSON with indentation: %v", err)
+	}
+
+	// Print the indented JSON
+	fmt.Println(string(prettyJSON))
+
+	err = json.Unmarshal(bodyBytes, &listBoardResponseBody)
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("unable to unmarshal response body while doListBoards: %v", err)
 	}
 
 	return listBoardResponseBody, nil
