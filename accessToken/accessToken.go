@@ -1,7 +1,7 @@
 package accessToken
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"os"
 
@@ -71,7 +71,7 @@ func (h *AccessTokenFileHandler) Write(accessToken string) error {
 
 func (c *AccessTokenCreator) NewToken(appId string, appSecret string) (string, error) {
 	if appId == "" || appSecret == "" {
-		return "", errors.New("no APP_ID and APP_SECRET are provided as env variables")
+		return "", fmt.Errorf("no APP_ID and APP_SECRET are provided as env variables")
 	}
 
 	oauth := oauth.NewOAuth(oauth.OAuthConfig{

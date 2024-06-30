@@ -54,7 +54,7 @@ func (c *Client) doCreatePin(body createPinRequestBody) error {
 		return fmt.Errorf("statuscode not 201 while doCreatePin. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
-	var response Pin
+	var response interface{}
 
 	err = json.NewDecoder(res.Body).Decode(&response)
 	if err != nil {

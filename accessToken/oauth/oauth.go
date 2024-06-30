@@ -56,7 +56,6 @@ func NewOAuth(cfg OAuthConfig) *OAuth {
 }
 
 func (o *OAuth) CreateAccessToken() (string, error) {
-
 	authCode, err := getAuthCode(o)
 	if err != nil {
 		return "", err
@@ -71,7 +70,6 @@ func (o *OAuth) CreateAccessToken() (string, error) {
 }
 
 func getAuthCode(o *OAuth) (string, error) {
-
 	pinterestOAuthUri := o.oAuthUri
 	appId := o.appId
 	redirectUri := o.redirectUri
@@ -99,7 +97,6 @@ func getAuthCode(o *OAuth) (string, error) {
 }
 
 func exchangeAuthCode(o *OAuth, authCode string) (string, error) {
-
 	apiUrl := fmt.Sprintf("%s/%s", o.apiUri, "v5/oauth/token")
 	base64Auth := base64Auth(o.appId, o.appSecret)
 	c := &http.Client{}

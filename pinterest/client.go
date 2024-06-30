@@ -41,7 +41,7 @@ func (c *Client) DeleteBoards(regex string) error {
 	r := regexp.MustCompile(regex)
 	for _, board := range boards {
 		if r.MatchString(board.Name) {
-			err := c.deleteBoard(board.Id)
+			err := c.doDeleteBoard(board.Id)
 			if err != nil {
 				log.Errorf("Error deleting board %s: %v", board.Name, err)
 			} else {

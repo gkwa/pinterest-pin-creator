@@ -32,11 +32,11 @@ func main() {
 		return
 	}
 
-	// client := getClient()
-	// err = client.DeleteBoards("testboard\\d+")
-	// if err != nil {
-	// 	log.Fatalf("Error deleting boards: %v", err)
-	// }
+	client := getClient()
+	err = client.DeleteBoards("testboard\\d+")
+	if err != nil {
+		log.Fatalf("Error deleting boards: %v", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()

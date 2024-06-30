@@ -66,7 +66,7 @@ func (c *Client) CreateBoard(boardData BoardData) error {
 	return c.doCreateBoard(createBoardRequestBody)
 }
 
-func (c *Client) deleteBoard(boardId string) error {
+func (c *Client) doDeleteBoard(boardId string) error {
 	url := fmt.Sprintf("%s%s/%s", c.baseUrl, "boards", boardId)
 
 	req, err := http.NewRequest("DELETE", url, nil)
@@ -100,17 +100,36 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return listBoardResponseBody, errors.New("unable to create new http request while doListBoards")
+		return listBoardResponseBody, fmt.Errorf("unable to create new http request while doListBoards")
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
 	req.Header.Add("Content-Type", "application/json")
 
+	// Marshal and indent request
+	reqDump := struct {
+		Method  string      `json:"method"`
+		URL     string      `json:"url"`
+		Headers http.Header `json:"headers"`
+	}{
+		Method:  req.Method,
+		URL:     req.URL.String(),
+		Headers: req.Header,
+	}
+	reqDumpJSON, err := json.MarshalIndent(reqDump, "", "  ")
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("error dumping request: %v", err)
+	}
+	fmt.Println("Request:")
+	fmt.Println(string(reqDumpJSON))
+
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return listBoardResponseBody, errors.New("unable to send request while doListBoards")
 	}
+	defer res.Body.Close()
 
+	// https://developers.pinterest.com/docs/api/v5/boards-list
 	if res.StatusCode != 200 {
 		errorResponse, err := handleWrongStatuscode(res)
 		if err != nil {
@@ -119,7 +138,20 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 		return listBoardResponseBody, fmt.Errorf("statuscode not 200 while doListBoards. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
 	}
 
-	defer res.Body.Close()
+	var response interface{}
+
+	err = json.NewDecoder(res.Body).Decode(&response)
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("unable to decode response body: %v", err)
+	}
+
+	prettyJSON, err := json.MarshalIndent(response, "", "    ")
+	if err != nil {
+		return listBoardResponseBody, fmt.Errorf("unable to format JSON: %v", err)
+	}
+
+	fmt.Println(string(prettyJSON))
+	fmt.Printf("status: %d\n", res.StatusCode)
 
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
