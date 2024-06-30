@@ -3,9 +3,8 @@ package oauth
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os/exec"
@@ -90,7 +89,7 @@ func getAuthCode(o *OAuth) (string, error) {
 	)
 
 	if err := cmd.Start(); err != nil {
-		return "", errors.New(fmt.Sprintf("unable to open browser. Error %s\n", err.Error()))
+		return "", fmt.Errorf("unable to open browser. Error %s", err.Error())
 	}
 
 	rs := newRedirectServer(oauthState, redirectLandingUri, redirectPort)
@@ -112,7 +111,7 @@ func exchangeAuthCode(o *OAuth, authCode string) (string, error) {
 
 	req, err := http.NewRequest("POST", apiUrl, strings.NewReader(data.Encode()))
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("unable to create http request. Error: %s\n", err.Error()))
+		return "", fmt.Errorf("unable to create http request. Error: %s", err.Error())
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Basic  %s", base64Auth))
@@ -121,13 +120,13 @@ func exchangeAuthCode(o *OAuth, authCode string) (string, error) {
 
 	res, err := c.Do(req)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("unable to send http request. Error: %s\n", err.Error()))
+		return "", fmt.Errorf("unable to send http request. Error: %s", err.Error())
 	}
 
 	defer res.Body.Close()
-	resDatabytes, err := ioutil.ReadAll(res.Body)
+	resDatabytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("unable to read response. Error: %s\n", err.Error()))
+		return "", fmt.Errorf("unable to read response. Error: %s", err.Error())
 	}
 
 	resp := struct {
@@ -141,7 +140,7 @@ func exchangeAuthCode(o *OAuth, authCode string) (string, error) {
 
 	err = json.Unmarshal(resDatabytes, &resp)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("unable to unmarshal response. Error: %s\n", err.Error()))
+		return "", fmt.Errorf("unable to unmarshal response. Error: %s", err.Error())
 	}
 
 	return resp.AccessToken, nil

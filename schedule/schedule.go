@@ -2,15 +2,10 @@ package schedule
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
 	"time"
-)
-
-const (
-	timestampLayout = time.RFC1123 // Mon, 02 Jan 2006 15:04:05 MST
 )
 
 type NextPinData struct {
@@ -58,16 +53,16 @@ func (r *ScheduleReader) Next() (*NextPinData, error) {
 
 		created, err := strconv.ParseBool(line[0])
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("unable to parse created value %s in csv file. Error: %s", line[0], err.Error()))
+			return nil, fmt.Errorf("unable to parse created value %s in csv file. Error: %s", line[0], err.Error())
 		}
 
-		if created == true {
+		if created {
 			continue
 		}
 
 		timestamp, err := time.Parse(time.RFC1123, line[1])
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf("unable to parse timestamp %s in csv file. Error: %s", line[1], err.Error()))
+			return nil, fmt.Errorf("unable to parse timestamp %s in csv file. Error: %s", line[1], err.Error())
 		}
 
 		if timestamp.After(now) {
@@ -109,7 +104,7 @@ func (r *ScheduleReader) SetCreated(index int) error {
 func readFile(csvFile string) ([][]string, error) {
 	csvfile, err := os.Open(csvFile)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("unable to read csv file. Error: %s", err.Error()))
+		return nil, fmt.Errorf("unable to read csv file. Error: %s", err.Error())
 	}
 
 	defer csvfile.Close()
@@ -119,7 +114,7 @@ func readFile(csvFile string) ([][]string, error) {
 
 	allLines, err := r.ReadAll()
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("unable to read csv file. Error: %s", err.Error()))
+		return nil, fmt.Errorf("unable to read csv file. Error: %s", err.Error())
 	}
 
 	return allLines, nil
@@ -128,7 +123,7 @@ func readFile(csvFile string) ([][]string, error) {
 func writeFile(csvFile string, allLines [][]string) error {
 	csvfile, err := os.OpenFile(csvFile, os.O_WRONLY, 0o644)
 	if err != nil {
-		return errors.New(fmt.Sprintf("unable to write csv file. Error: %s", err.Error()))
+		return fmt.Errorf("unable to write csv file. Error: %s", err.Error())
 	}
 
 	defer csvfile.Close()
@@ -140,7 +135,7 @@ func writeFile(csvFile string, allLines [][]string) error {
 
 	err = w.WriteAll(allLines)
 	if err != nil {
-		return errors.New(fmt.Sprintf("unable to write csv file. Error: %s", err.Error()))
+		return fmt.Errorf("unable to write csv file. Error: %s", err.Error())
 	}
 
 	return nil

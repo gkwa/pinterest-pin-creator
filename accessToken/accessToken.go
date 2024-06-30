@@ -2,6 +2,7 @@ package accessToken
 
 import (
 	"errors"
+	"log"
 	"os"
 
 	"pin-creator/accessToken/oauth"
@@ -52,6 +53,9 @@ func (h *AccessTokenFileHandler) Read() (string, error) {
 
 func (h *AccessTokenFileHandler) Write(accessToken string) error {
 	file, err := os.Create(h.filePath)
+	if err != nil {
+		log.Fatalf("error opening file: %v", err)
+	}
 	defer file.Close()
 	if err != nil {
 		return err

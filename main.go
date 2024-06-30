@@ -94,7 +94,10 @@ func getToken() string {
 		}
 
 		log.Info("Writing access token to file")
-		tokenFileHandler.Write(token)
+		err = tokenFileHandler.Write(token)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error writing to token file handler: %v", err)
+		}
 
 		return token
 	}

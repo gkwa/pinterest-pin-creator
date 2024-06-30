@@ -44,8 +44,10 @@ func (s *redirectServer) GetCode() string {
 
 		if stateQuery != s.oAuthState {
 			// shutdown server
-			server.Shutdown(context.Background())
-			log.Fatal("received OAuth state does not match the send state")
+			err := server.Shutdown(context.Background())
+			if err != nil {
+				log.Fatalf("received OAuth state does not match the send state: %v", err)
+			}
 		}
 
 		code = codeQuery
@@ -60,7 +62,10 @@ func (s *redirectServer) GetCode() string {
 	log.Info("Waiting for you to grant access...")
 
 	// this will block until we get a response from pinterest
-	server.ListenAndServe()
+	err:=server.ListenAndServe()
+	if err != nil {
+		log.Fatalf("cant listen and serve: %v", err)
+	}
 
 	return code
 
