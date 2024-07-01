@@ -1,6 +1,8 @@
 package pinterest
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"regexp"
 
@@ -12,10 +14,10 @@ const (
 )
 
 type ClientInterface interface {
-	CreatePin(pinData PinData) error
-	ListBoards() ([]BoardInfo, error)
-	CreateBoard(boardData BoardData) error
-	DeleteBoards(regex string) error
+	CreatePin(ctx context.Context, pinData PinData) error
+	ListBoards(ctx context.Context) ([]BoardInfo, error)
+	CreateBoard(ctx context.Context, boardData BoardData) error
+	DeleteBoards(ctx context.Context, regex string) error
 }
 
 type Client struct {
@@ -32,8 +34,8 @@ func NewClient(accessToken string) *Client {
 	}
 }
 
-func (c *Client) DeleteBoards(regex string) error {
-	boards, err := c.ListBoards()
+func (c *Client) DeleteBoards(ctx context.Context, regex string) error {
+	boards, err := c.ListBoards(ctx)
 	if err != nil {
 		return err
 	}
@@ -45,7 +47,7 @@ func (c *Client) DeleteBoards(regex string) error {
 			if err != nil {
 				log.Errorf("Error deleting board %s: %v", board.Name, err)
 			} else {
-				log.Infof("Deleted board: %s", board.Name)
+				log.Infof(fmt.Sprintf("Deleted board: %s", board.Name))
 			}
 		}
 	}

@@ -2,11 +2,14 @@ package pinterest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"pin-creator/internal/logger"
 )
 
 type BoardInfo struct {
@@ -37,10 +40,10 @@ type ownerRequestBody struct {
 	Username string `json:"username"`
 }
 
-func (c *Client) ListBoards() ([]BoardInfo, error) {
+func (c *Client) ListBoards(ctx context.Context) ([]BoardInfo, error) {
 	boardInfos := make([]BoardInfo, 0)
 
-	listBoardResponseBody, err := c.doListBoards()
+	listBoardResponseBody, err := c.doListBoards(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +59,7 @@ func (c *Client) ListBoards() ([]BoardInfo, error) {
 	return boardInfos, nil
 }
 
-func (c *Client) CreateBoard(boardData BoardData) error {
+func (c *Client) CreateBoard(ctx context.Context, boardData BoardData) error {
 	createBoardRequestBody := BoardData{
 		Name:        boardData.Name,
 		Description: boardData.Description,
@@ -93,7 +96,9 @@ func (c *Client) doDeleteBoard(boardId string) error {
 	return nil
 }
 
-func (c *Client) doListBoards() (listBoardResponseBody, error) {
+func (c *Client) doListBoards(ctx context.Context) (listBoardResponseBody, error) {
+	log := logger.FromContext(ctx)
+
 	listBoardResponseBody := listBoardResponseBody{}
 
 	url := fmt.Sprintf("%s%s", c.baseUrl, "boards")
@@ -120,8 +125,8 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 	if err != nil {
 		return listBoardResponseBody, fmt.Errorf("error dumping request: %v", err)
 	}
-	fmt.Println("Request:")
-	fmt.Println(string(reqDumpJSON))
+	log.V(1).Info("Request:")
+	log.V(1).Info(string(reqDumpJSON))
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -160,8 +165,8 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 		return listBoardResponseBody, fmt.Errorf("unable to format JSON: %v", err)
 	}
 
-	fmt.Println(string(prettyJSON))
-	fmt.Printf("status: %d\n", res.StatusCode)
+	log.V(1).Info(string(prettyJSON))
+	log.V(1).Info(fmt.Sprintf("status: %d\n", res.StatusCode))
 
 	// Check if the JSON is empty
 	if len(bodyBytes) == 0 {
@@ -182,7 +187,7 @@ func (c *Client) doListBoards() (listBoardResponseBody, error) {
 	}
 
 	// Print the indented JSON
-	fmt.Println(string(prettyJSON))
+	log.V(1).Info(string(prettyJSON))
 
 	err = json.Unmarshal(bodyBytes, &listBoardResponseBody)
 	if err != nil {

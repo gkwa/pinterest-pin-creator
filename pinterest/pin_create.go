@@ -2,13 +2,16 @@ package pinterest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+
+	"pin-creator/internal/logger"
 )
 
-func (c *Client) CreatePin(pinData PinData) error {
+func (c *Client) CreatePin(ctx context.Context, pinData PinData) error {
 	createPinRequestBody := createPinRequestBody{
 		Link:        pinData.Link,
 		Title:       pinData.Title,
@@ -22,10 +25,12 @@ func (c *Client) CreatePin(pinData PinData) error {
 		},
 	}
 
-	return c.doCreatePin(createPinRequestBody)
+	return c.doCreatePin(ctx, createPinRequestBody)
 }
 
-func (c *Client) doCreatePin(body createPinRequestBody) error {
+func (c *Client) doCreatePin(ctx context.Context, body createPinRequestBody) error {
+	log := logger.FromContext(ctx)
+
 	url := fmt.Sprintf("%s%s", c.baseUrl, "pins")
 
 	bodyBytes, err := json.Marshal(body)
@@ -66,8 +71,8 @@ func (c *Client) doCreatePin(body createPinRequestBody) error {
 		return fmt.Errorf("unable to format JSON: %v", err)
 	}
 
-	fmt.Println(string(prettyJSON))
-	fmt.Printf("status: %d\n", res.StatusCode)
+	log.V(1).Info(string(prettyJSON))
+	log.V(1).Info("status: %d", res.StatusCode)
 
 	return nil
 }

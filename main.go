@@ -11,55 +11,69 @@ import (
 	"pin-creator/pinterest"
 	"pin-creator/schedule"
 
-	log "github.com/sirupsen/logrus"
+	"pin-creator/internal/logger"
 )
 
 var cfg *config.Config
 
 func main() {
-	readConfig()
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
 
-	log.Infof("Checking for pins to create in '%s'", cfg.ScheduleFilePath)
+	// Set log level to Info (0) or Debug (-1) here
+	ctx = logger.NewContext(ctx)
+
+	myLogger := logger.NewLogger(logger.LoggerConfig{UseJSON: false, LogLevel: 1})
+	ctx = logger.WithLogger(ctx, myLogger)
+	readConfig(ctx)
+
+	log := logger.FromContext(ctx)
+	log.Info("Doing something", "step", 1)
+	log.V(1).Info("Debug info", "details", "some debug details")
+
+	log.Info("Checking for pins to create in", cfg.ScheduleFilePath)
 
 	scheduleReader := schedule.NewScheduleReader(cfg.ScheduleFilePath)
 	nextPinData, err := scheduleReader.Next()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Error(err, "error reading next schedule")
+		os.Exit(1)
 	}
 	if nextPinData == nil {
 		log.Info("No pin scheduled for creation")
 		return
 	}
 
-	client := getClient()
-	err = client.DeleteBoards("testboard\\d+")
-	if err != nil {
-		log.Fatalf("Error deleting boards: %v", err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	// client := getClient()
+	// err = client.DeleteBoards("testboard\\d+")
+	// if err != nil {
+	// 	log.Fatalf("Error deleting boards: %v", err)
+	// }
 
 	start := time.Now()
 	err = createPin(ctx, nextPinData)
 	duration := time.Since(start)
 
 	if err != nil {
-		log.Fatalf("Error creating pin: %v", err)
+		log.Error(err, "error creating pin")
+		os.Exit(1)
 	}
 
-	log.Infof("Pin creation took %s", duration.Truncate(time.Second))
+	log.Info(fmt.Sprintf("Pin creation took %s", duration.Truncate(time.Second)))
 
 	err = scheduleReader.SetCreated(nextPinData.Index)
 	if err != nil {
-		log.Fatalf("Error setting pin created to true. Error: %s", err.Error())
+		log.Error(err, "error setting pin created to true")
+		os.Exit(1)
 	}
 }
 
-func readConfig() {
+func readConfig(ctx context.Context) {
+	log := logger.FromContext(ctx)
 	args := os.Args
 	if len(args) != 2 {
-		log.Fatalf("config.yaml file not provided")
+		log.Error(nil, "config.yaml file not provided")
+		os.Exit(1)
 	}
 
 	configFilePath := args[1]
@@ -67,14 +81,17 @@ func readConfig() {
 	cr := config.NewReader(configFilePath)
 	c, err := cr.Read()
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Error(err, fmt.Sprintf("error reading %s", configFilePath))
+		os.Exit(1)
 	}
 	cfg = c
 }
 
-func getToken() string {
+func getToken(ctx context.Context) string {
 	fmt.Println(cfg)
 	tokenFileHandler := accessToken.NewAccessTokenFileHandler(cfg.AccessTokenPath)
+
+	log := logger.FromContext(ctx)
 
 	log.Info("Reading access token from file")
 	token, err := tokenFileHandler.Read()
@@ -89,7 +106,8 @@ func getToken() string {
 
 		token, err := tokenCreator.NewToken(appId, appSecret)
 		if err != nil {
-			log.Fatalf("error creating new access token. Error: %s", err.Error())
+			log.Error(err, "error creating new access token")
+			os.Exit(1)
 		}
 
 		log.Info("Writing access token to file")
@@ -102,19 +120,21 @@ func getToken() string {
 	}
 }
 
-func getClient() pinterest.ClientInterface {
-	token := getToken()
+func getClient(ctx context.Context) pinterest.ClientInterface {
+	token := getToken(ctx)
 	return pinterest.NewClient(token)
 }
 
 func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) error {
-	client := getClient()
+	log := logger.FromContext(ctx)
+
+	client := getClient(ctx)
 
 	var boardId string
 	var err error
 
 	err = retry(ctx, func() error {
-		boards, err := client.ListBoards()
+		boards, err := client.ListBoards(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,8 +144,8 @@ func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) erro
 			return nil
 		}
 
-		log.Info("Board not found. Creating new board.")
-		err = client.CreateBoard(pinterest.BoardData{
+		log.V(1).Info("Board not found. Creating new board.")
+		err = client.CreateBoard(ctx, pinterest.BoardData{
 			Name:        scheduledPinData.BoardName,
 			Description: "Created by pin-creator",
 			Privacy:     "PUBLIC",
@@ -149,12 +169,12 @@ func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) erro
 		AltText:     scheduledPinData.Description,
 	}
 
-	err = client.CreatePin(pinData)
+	err = client.CreatePin(ctx, pinData)
 	if err != nil {
 		return fmt.Errorf("failed to create pin: %w", err)
 	}
 
-	log.Infof("Created Pin '%s' in board '%s'\n", pinData.Title, scheduledPinData.BoardName)
+	log.Info(fmt.Sprintf("Created Pin '%s' in board '%s'", pinData.Title, scheduledPinData.BoardName))
 	return nil
 }
 
