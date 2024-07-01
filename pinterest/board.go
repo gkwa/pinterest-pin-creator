@@ -125,8 +125,7 @@ func (c *Client) doListBoards(ctx context.Context) (listBoardResponseBody, error
 	if err != nil {
 		return listBoardResponseBody, fmt.Errorf("error dumping request: %v", err)
 	}
-	log.V(1).Info("Request:")
-	log.V(1).Info(string(reqDumpJSON))
+	log.V(1).Info(fmt.Sprintf("Request: %s", string(reqDumpJSON)))
 
 	res, err := c.httpClient.Do(req)
 	if err != nil {
@@ -166,7 +165,7 @@ func (c *Client) doListBoards(ctx context.Context) (listBoardResponseBody, error
 	}
 
 	log.V(1).Info(string(prettyJSON))
-	log.V(1).Info(fmt.Sprintf("status: %d\n", res.StatusCode))
+	log.V(1).Info(fmt.Sprintf("status: %d", res.StatusCode))
 
 	// Check if the JSON is empty
 	if len(bodyBytes) == 0 {

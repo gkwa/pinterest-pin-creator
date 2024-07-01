@@ -72,7 +72,7 @@ func (c *Client) doCreatePin(ctx context.Context, body createPinRequestBody) err
 	}
 
 	log.V(1).Info(string(prettyJSON))
-	log.V(1).Info("status: %d", res.StatusCode)
+	log.V(1).Info(fmt.Sprintf("status: %d", res.StatusCode))
 
 	return nil
 }

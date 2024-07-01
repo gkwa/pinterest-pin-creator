@@ -23,14 +23,11 @@ func main() {
 	// Set log level to Info (0) or Debug (-1) here
 	ctx = logger.NewContext(ctx)
 
-	myLogger := logger.NewLogger(logger.LoggerConfig{UseJSON: false, LogLevel: 1})
+	myLogger := logger.NewLogger(logger.LoggerConfig{UseJSON: false, LogLevel: -1})
 	ctx = logger.WithLogger(ctx, myLogger)
 	readConfig(ctx)
 
 	log := logger.FromContext(ctx)
-	log.Info("Doing something", "step", 1)
-	log.V(1).Info("Debug info", "details", "some debug details")
-
 	log.Info("Checking for pins to create in", cfg.ScheduleFilePath)
 
 	scheduleReader := schedule.NewScheduleReader(cfg.ScheduleFilePath)
