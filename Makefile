@@ -87,3 +87,7 @@ help:
 .PHONY: clean # clean bin
 clean:
 	$(RM) -r $(BIN) .timestamps
+
+pretty:
+	ruff format .
+	ruff check --fix
