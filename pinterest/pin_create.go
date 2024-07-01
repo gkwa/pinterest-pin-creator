@@ -1,15 +1,28 @@
 package pinterest
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 
 	"pin-creator/internal/logger"
 )
+
+type mediaSourceRequestBody struct {
+	SourceType  string `json:"source_type"`
+	ContentType string `json:"content_type"`
+	Data        string `json:"data"`
+}
+
+type createPinRequestBody struct {
+	Link           string                 `json:"link"`
+	Title          string                 `json:"title"`
+	Description    string                 `json:"description"`
+	AltText        string                 `json:"alt_text"`
+	BoardId        string                 `json:"board_id"`
+	BoardSectionId string                 `json:"board_section_id,omitempty"`
+	MediaSource    mediaSourceRequestBody `json:"media_source"`
+}
 
 func (c *Client) CreatePin(ctx context.Context, pinData PinData) error {
 	createPinRequestBody := createPinRequestBody{
@@ -30,49 +43,23 @@ func (c *Client) CreatePin(ctx context.Context, pinData PinData) error {
 
 func (c *Client) doCreatePin(ctx context.Context, body createPinRequestBody) error {
 	log := logger.FromContext(ctx)
-
 	url := fmt.Sprintf("%s%s", c.baseUrl, "pins")
 
-	bodyBytes, err := json.Marshal(body)
+	req, err := c.createRequest("POST", url, body)
 	if err != nil {
-		return errors.New("unable to marshal body while doCreatePin")
+		return fmt.Errorf("error creating request: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
+	responseBody, err := c.executeRequest(ctx, req, 201)
 	if err != nil {
-		return errors.New("unable to create new http request while doCreatePin")
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return errors.New("unable to send request while doCreatePin")
-	}
-
-	if res.StatusCode != 201 {
-		errorResponse, err := handleWrongStatuscode(res)
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("statuscode not 201 while doCreatePin. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
+		return fmt.Errorf("error executing request: %v", err)
 	}
 
 	var response interface{}
-
-	err = json.NewDecoder(res.Body).Decode(&response)
-	if err != nil {
+	if err := json.Unmarshal(responseBody, &response); err != nil {
 		return fmt.Errorf("unable to decode response body: %v", err)
 	}
 
-	prettyJSON, err := json.MarshalIndent(response, "", "    ")
-	if err != nil {
-		return fmt.Errorf("unable to format JSON: %v", err)
-	}
-
-	log.V(1).Info(string(prettyJSON))
-	log.V(1).Info(fmt.Sprintf("status: %d", res.StatusCode))
-
+	log.V(1).Info(fmt.Sprintf("Pin created successfully. Response: %s", string(responseBody)))
 	return nil
 }

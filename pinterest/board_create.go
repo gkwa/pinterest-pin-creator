@@ -1,13 +1,21 @@
 package pinterest
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 )
+
+type ownerRequestBody struct {
+	Username string `json:"username"`
+}
+
+type boardRequestBody struct {
+	Id          string           `json:"id"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Owner       ownerRequestBody `json:"owner"`
+	Privacy     string           `json:"privacy"`
+}
 
 func (c *Client) CreateBoard(ctx context.Context, boardData BoardData) error {
 	createBoardRequestBody := BoardData{
@@ -16,36 +24,20 @@ func (c *Client) CreateBoard(ctx context.Context, boardData BoardData) error {
 		Privacy:     boardData.Privacy,
 	}
 
-	return c.doCreateBoard(createBoardRequestBody)
+	return c.doCreateBoard(ctx, createBoardRequestBody)
 }
 
-func (c *Client) doCreateBoard(body BoardData) error {
+func (c *Client) doCreateBoard(ctx context.Context, body BoardData) error {
 	url := fmt.Sprintf("%s%s", c.baseUrl, "boards")
 
-	bodyBytes, err := json.MarshalIndent(body, "", "  ")
+	req, err := c.createRequest("POST", url, body)
 	if err != nil {
-		return errors.New("unable to marshal body while doCreateBoard")
+		return fmt.Errorf("error creating request: %v", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
+	_, err = c.executeRequest(ctx, req, 201)
 	if err != nil {
-		return errors.New("unable to create new http request while doCreateBoard")
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.accessToken))
-	req.Header.Add("Content-Type", "application/json")
-
-	res, err := c.httpClient.Do(req)
-	if err != nil {
-		return errors.New("unable to send request while doCreateBoard")
-	}
-
-	if res.StatusCode != 201 {
-		errorResponse, err := handleWrongStatuscode(res)
-		if err != nil {
-			return err
-		}
-		return fmt.Errorf("statuscode not 201 while doCreateBoard. ErrorCode: %d ErrorMessage: %s", errorResponse.Code, errorResponse.Message)
+		return fmt.Errorf("error executing request: %v", err)
 	}
 
 	return nil
