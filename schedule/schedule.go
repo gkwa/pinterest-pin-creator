@@ -121,16 +121,14 @@ func readFile(csvFile string) ([][]string, error) {
 }
 
 func writeFile(csvFile string, allLines [][]string) error {
-	csvfile, err := os.OpenFile(csvFile, os.O_WRONLY, 0o644)
+	csvfile, err := os.Create(csvFile) // Changed from OpenFile to Create
 	if err != nil {
-		return fmt.Errorf("unable to write csv file. Error: %s", err.Error())
+		return fmt.Errorf("unable to create csv file. Error: %s", err.Error())
 	}
-
 	defer csvfile.Close()
 
 	w := csv.NewWriter(csvfile)
 	w.Comma = ';'
-
 	defer w.Flush()
 
 	err = w.WriteAll(allLines)
