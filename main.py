@@ -20,16 +20,13 @@ def clean_csv(file_path):
     with open(file_path, "r") as infile, temp_file:
         # Read the header
         header = infile.readline().strip()
-        fieldnames = header.split(";")
-        expected_field_count = len(fieldnames)
 
         # Write the header to the temp file
         temp_file.write(header + "\n")
 
         # Process each line
         for line in infile:
-            if len(line.strip().split(";")) == expected_field_count:
-                temp_file.write(line)
+            temp_file.write(line)
 
     # Replace the original file with the cleaned file
     temp_file.close()
