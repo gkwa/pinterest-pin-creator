@@ -17,13 +17,10 @@ import (
 var cfg *config.Config
 
 func main() {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
+	baseCtx := context.Background()
+	ctx := logger.NewContext(baseCtx)
 
-	// Set log level to Info (0) or Debug (-1) here
-	ctx = logger.NewContext(ctx)
-
-	myLogger := logger.NewLogger(logger.LoggerConfig{UseJSON: false, LogLevel: -1})
+	myLogger := logger.NewLogger(logger.LoggerConfig{UseJSON: false, LogLevel: 0})
 	ctx = logger.WithLogger(ctx, myLogger)
 	readConfig(ctx)
 
@@ -41,10 +38,11 @@ func main() {
 		return
 	}
 
-	// client := getClient()
-	// err = client.DeleteBoards("testboard\\d+")
+	// client := getClient(ctx)
+	// err = client.DeleteBoards(ctx, "testboard\\d+")
 	// if err != nil {
-	// 	log.Fatalf("Error deleting boards: %v", err)
+	// 	log.Error(err, "error deleting boards")
+	// 	os.Exit(1)
 	// }
 
 	start := time.Now()
@@ -85,10 +83,8 @@ func readConfig(ctx context.Context) {
 }
 
 func getToken(ctx context.Context) string {
-	fmt.Println(cfg)
-	tokenFileHandler := accessToken.NewAccessTokenFileHandler(cfg.AccessTokenPath)
-
 	log := logger.FromContext(ctx)
+	tokenFileHandler := accessToken.NewAccessTokenFileHandler(cfg.AccessTokenPath)
 
 	log.Info("Reading access token from file")
 	token, err := tokenFileHandler.Read()
@@ -124,37 +120,17 @@ func getClient(ctx context.Context) pinterest.ClientInterface {
 
 func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) error {
 	log := logger.FromContext(ctx)
-
 	client := getClient(ctx)
 
-	var boardId string
-	var err error
-
-	err = retry(ctx, func() error {
-		boards, err := client.ListBoards(ctx)
-		if err != nil {
-			return err
-		}
-
-		boardId, err = boardIdByName(boards, scheduledPinData.BoardName)
-		if err == nil {
-			return nil
-		}
-
-		log.V(1).Info("Board not found. Creating new board.")
-		err = client.CreateBoard(ctx, pinterest.BoardData{
-			Name:        scheduledPinData.BoardName,
-			Description: "Created by pin-creator",
-			Privacy:     "PUBLIC",
-		})
-		if err != nil {
-			return err
-		}
-
-		return fmt.Errorf("board not found after creation, retrying: %v", err)
-	})
+	boardCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	boardId, err := pinterest.CreateOrFindBoard(boardCtx, client, log, scheduledPinData.BoardName)
 	if err != nil {
-		return fmt.Errorf("failed to create or find board: %v", err)
+		if err == context.DeadlineExceeded {
+			log.Error(err, "Timeout occurred while creating or finding board")
+			return fmt.Errorf("timeout occurred while creating or finding board: %w", err)
+		}
+		return fmt.Errorf("failed to create or find board: %w", err)
 	}
 
 	pinData := pinterest.PinData{
@@ -166,41 +142,17 @@ func createPin(ctx context.Context, scheduledPinData *schedule.NextPinData) erro
 		AltText:     scheduledPinData.Description,
 	}
 
-	err = client.CreatePin(ctx, pinData)
+	pinCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	err = client.CreatePin(pinCtx, pinData)
 	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Error(err, "Timeout occurred while creating pin")
+			return fmt.Errorf("timeout occurred while creating pin: %w", err)
+		}
 		return fmt.Errorf("failed to create pin: %w", err)
 	}
 
 	log.Info(fmt.Sprintf("Created Pin '%s' in board '%s'", pinData.Title, scheduledPinData.BoardName))
 	return nil
-}
-
-func boardIdByName(boards []pinterest.BoardInfo, boardName string) (string, error) {
-	for _, board := range boards {
-		if board.Name == boardName {
-			return board.Id, nil
-		}
-	}
-
-	return "", fmt.Errorf("board %s not found", boardName)
-}
-
-func retry(ctx context.Context, f func() error) error {
-	backoff := time.Second
-	for {
-		err := f()
-		if err == nil {
-			return nil
-		}
-
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("operation failed after retries: %w", err)
-		case <-time.After(backoff):
-			backoff *= 2
-			if backoff > 60*time.Second {
-				backoff = 60 * time.Second
-			}
-		}
-	}
 }

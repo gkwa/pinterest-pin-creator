@@ -8,9 +8,9 @@ import (
 	"pin-creator/internal/logger"
 )
 
-func (c *Client) DeleteBoards(ctx context.Context, regex string) error {
+func (client *Client) DeleteBoards(ctx context.Context, regex string) error {
 	log := logger.FromContext(ctx)
-	boards, err := c.ListBoards(ctx)
+	boards, err := client.ListBoards(ctx)
 	if err != nil {
 		return err
 	}
@@ -18,7 +18,7 @@ func (c *Client) DeleteBoards(ctx context.Context, regex string) error {
 	r := regexp.MustCompile(regex)
 	for _, board := range boards {
 		if r.MatchString(board.Name) {
-			err := c.doDeleteBoard(ctx, board.Id)
+			err := client.doDeleteBoard(ctx, board.Id)
 			if err != nil {
 				log.Error(err, fmt.Sprintf("error deleting board %s", board.Name))
 			} else {
@@ -30,15 +30,15 @@ func (c *Client) DeleteBoards(ctx context.Context, regex string) error {
 	return nil
 }
 
-func (c *Client) doDeleteBoard(ctx context.Context, boardId string) error {
-	url := fmt.Sprintf("%s%s/%s", c.baseUrl, "boards", boardId)
+func (client *Client) doDeleteBoard(ctx context.Context, boardId string) error {
+	url := fmt.Sprintf("%s%s/%s", client.baseUrl, "boards", boardId)
 
-	req, err := c.createRequest("DELETE", url, nil)
+	req, err := client.createRequest("DELETE", url, nil)
 	if err != nil {
 		return fmt.Errorf("error creating request: %v", err)
 	}
 
-	_, err = c.executeRequest(ctx, req, 204)
+	_, err = client.executeRequest(ctx, req, 204)
 	if err != nil {
 		return fmt.Errorf("error executing request: %v", err)
 	}

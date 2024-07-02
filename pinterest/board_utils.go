@@ -34,7 +34,7 @@ func (c *Client) logRequestDetails(ctx context.Context, req *http.Request) {
 		log.Error(err, "error dumping request")
 		return
 	}
-	log.V(1).Info(fmt.Sprintf("Request: %s", string(reqDumpJSON)))
+	log.V(2).Info(fmt.Sprintf("Request: %s", string(reqDumpJSON)))
 }
 
 func (c *Client) logResponse(ctx context.Context, bodyBytes []byte) {
@@ -54,5 +54,5 @@ func (c *Client) prettyPrintJSON(ctx context.Context, data interface{}) {
 		log.Error(err, "error marshaling JSON with indentation")
 		return
 	}
-	log.V(1).Info(string(prettyJSON))
+	log.V(2).Info(string(prettyJSON))
 }

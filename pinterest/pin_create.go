@@ -60,6 +60,6 @@ func (c *Client) doCreatePin(ctx context.Context, body createPinRequestBody) err
 		return fmt.Errorf("unable to decode response body: %v", err)
 	}
 
-	log.V(1).Info(fmt.Sprintf("Pin created successfully. Response: %s", string(responseBody)))
+	log.V(2).Info(fmt.Sprintf("Pin created successfully. Response: %s", string(responseBody)))
 	return nil
 }

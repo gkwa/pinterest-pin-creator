@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+	"github.com/go-logr/logr"
 )
 
 type listBoardResponseBody struct {
@@ -46,4 +48,31 @@ func (c *Client) doListBoards(ctx context.Context) (listBoardResponseBody, error
 	}
 
 	return listBoardResponseBody, nil
+}
+
+func BoardIdByName(boards []BoardInfo, boardName string) (string, error) {
+	for _, board := range boards {
+		if board.Name == boardName {
+			return board.Id, nil
+		}
+	}
+
+	return "", fmt.Errorf("board %s not found", boardName)
+}
+
+func findBoard(ctx context.Context, client ClientInterface, log logr.Logger, boardName string) (string, error) {
+	log.V(2).Info("Attempting to list boards")
+	boards, err := client.ListBoards(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error listing boards: %w", err)
+	}
+
+	for _, board := range boards {
+		if board.Name == boardName {
+			log.V(2).Info("board found", "boardName", boardName, "boardId", board.Id)
+			return board.Id, nil
+		}
+	}
+
+	return "", ErrBoardNotFound{BoardName: boardName}
 }

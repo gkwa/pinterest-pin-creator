@@ -3,6 +3,7 @@ module pin-creator
 go 1.17
 
 require (
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zerologr v1.2.3
 	github.com/google/uuid v1.3.0

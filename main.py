@@ -2,6 +2,16 @@ import csv
 import re
 import tempfile
 import os
+import argparse
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="Process and modify CSV files.")
+    parser.add_argument("input_file", help="Path to the input CSV file")
+    parser.add_argument(
+        "--increment-board", action="store_true", help="Increment the board number"
+    )
+    return parser.parse_args()
 
 
 def clean_csv(file_path):
@@ -26,7 +36,7 @@ def clean_csv(file_path):
     os.replace(temp_file.name, file_path)
 
 
-def modify_csv(file_path):
+def modify_csv(file_path, increment_board=False):
     temp_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, newline="")
 
     with open(file_path, "r") as infile, temp_file:
@@ -45,13 +55,14 @@ def modify_csv(file_path):
             # Change 'created' to 'false'
             row["created"] = "false"
 
-            # Increment the number in 'board'
-            board = row["board"]
-            match = re.search(r"(\D+)(\d+)", board)
-            if match:
-                prefix, number = match.groups()
-                new_number = int(number) + 1
-                row["board"] = f"{prefix}{new_number}"
+            # Increment the number in 'board' if the flag is set
+            if increment_board:
+                board = row["board"]
+                match = re.search(r"(\D+)(\d+)", board)
+                if match:
+                    prefix, number = match.groups()
+                    new_number = int(number) + 1
+                    row["board"] = f"{prefix}{new_number}"
 
             writer.writerow(row)
 
@@ -60,7 +71,11 @@ def modify_csv(file_path):
     os.replace(temp_file.name, file_path)
 
 
-# Usage
-input_file = "schedule.csv"
-clean_csv(input_file)  # First, clean the CSV
-modify_csv(input_file)  # Then, modify it
+def main():
+    args = parse_arguments()
+    clean_csv(args.input_file)  # First, clean the CSV
+    modify_csv(args.input_file, args.increment_board)  # Then, modify it
+
+
+if __name__ == "__main__":
+    main()

@@ -31,7 +31,7 @@ func (c *Client) createRequest(method, url string, body interface{}) (*http.Requ
 func (c *Client) executeRequest(ctx context.Context, req *http.Request, expectedStatus int) ([]byte, error) {
 	c.logRequestDetails(ctx, req)
 
-	res, err := c.httpClient.Do(req)
+	res, err := c.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("unable to send request: %v", err)
 	}
